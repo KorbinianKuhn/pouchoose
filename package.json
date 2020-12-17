@@ -1,0 +1,25 @@
+{
+  "name": "pouchoose",
+  "version": "0.0.0",
+  "description": "Mongoose for pouchdb",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "node_modules/.bin/ts-node-dev test.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Korbinian Kuhn",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/mongoose": "^5.7.36",
+    "@types/pouchdb": "^6.4.0",
+    "mongoose": "^5.10.11",
+    "pouchdb": "^7.2.2",
+    "pouchdb-find": "^7.2.2",
+    "ts-node-dev": "^1.0.0",
+    "typescript": "^4.0.5"
+  },
+  "dependencies": {
+    "joi": "^17.3.0",
+    "rxjs": "^6.6.3"
+  }
+}
