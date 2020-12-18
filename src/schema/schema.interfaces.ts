@@ -9,7 +9,7 @@ export type SchemaType =
   | SchemaDefinition;
 
 export interface SchemaTypeObject {
-  type: String | Boolean | Number | Date | Array<SchemaType> | SchemaDefinition;
+  type: string | boolean | number | Date | Array<SchemaType> | SchemaDefinition;
   index?: boolean;
   required?: boolean;
   ref?: string;

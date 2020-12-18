@@ -3,5 +3,5 @@ import { DocumentChangeType } from './connection.enums';
 
 export interface DocumentChangedEvent {
   type: DocumentChangeType;
-  doc: Document<unknown>;
+  doc: Document;
 }

@@ -37,18 +37,18 @@ export class Connection {
           });
         }
       })
-      .on('error', (value: any) => console.error('error', value))
-      .on('complete', (value: PouchDB.Core.ChangesResponse<any>) => {});
+      .on('error', (value: any) => console.error('error', value));
+    // .on('complete', (value: PouchDB.Core.ChangesResponse<any>) => {});
     this.docChangedEventsEnabled = true;
   }
 
-  public async disconnect() {
+  public async disconnect(): Promise<void> {
     this.dbChanges.cancel();
     this.dbChanges = null;
     await this.db.close();
   }
 
-  public async reconnect() {
+  public async reconnect(): Promise<void> {
     this.init(this.name, this.options);
   }
 

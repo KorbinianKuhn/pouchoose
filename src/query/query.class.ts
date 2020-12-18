@@ -2,6 +2,7 @@ import { Connection } from '../connection/connection.class';
 import { Document } from '../document/document.class';
 import { Schema } from '../schema/schema.class';
 import { QueryConditions } from './query.interfaces';
+
 export abstract class Query<T extends Document> {
   public pipeline: any[] = [];
 
@@ -27,9 +28,9 @@ export abstract class Query<T extends Document> {
   protected async _exec(): Promise<T[]> {
     const res = await this.connection.db.find(this.query.request);
 
-    for (const step of this.pipeline) {
-      // TODO: execute pipeline steps
-    }
+    // for (const step of this.pipeline) {
+    //   // TODO: execute pipeline steps
+    // }
 
     return res.docs.map((doc) => new Document(this.schema.validate(doc)) as T);
   }

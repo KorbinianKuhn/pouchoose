@@ -1,2 +1,4 @@
 node_modules
 _pouch_test_db
+.nyc_output
+coverage

@@ -10,13 +10,14 @@ export class Document {
 
   toJSON(): any {
     const obj: any = {};
+
     for (const key of Object.keys(this)) {
       obj[key] = this[key];
     }
     return obj;
   }
 
-  set(path: string, value: any) {
+  set(path: string, value: unknown): void {
     this[path] = value;
   }
 

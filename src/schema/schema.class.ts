@@ -9,13 +9,13 @@ export class Schema {
     this.schema = transformSchemaDefinitionToJoiSchema(definition);
   }
 
-  setType(name: string) {
+  setType(name: string): void {
     this.schema = (this.schema as Joi.ObjectSchema).append({
       $type: Joi.string().only().allow(name).default(name),
     });
   }
 
-  validate(value: any) {
+  validate(value: any): any {
     const res = this.schema.validate(value);
     if (res.error) {
       throw res.error;

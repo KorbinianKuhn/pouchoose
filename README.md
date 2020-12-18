@@ -23,7 +23,7 @@ await connection.disconnect();
 ```typescript
 import { connect, model } from 'pouchoose';
 
-// Interface is optional for TS
+// TS-Interface is optional
 interface IPerson {
   name: string;
   age: nunmber;
@@ -47,17 +47,27 @@ const Person = model<IPerson>('Person', personSchema);
 ```typescript
 const doc = await Person.create({ name: 'Jane Doe' });
 
+// Read Queries require exec() call at the end
 await Person.find().exec();
 ```
 
-### Methods
+**Create**
 
 - create(doc)
 - insertMany(docs)
-- find(conditions)
-- findById(id)
-- findOne(conditions)
+
+**Read**
+
+- find(conditions).exec()
+- findById(id).exec()
+- findOne(conditions).exec()
+
+**Update**
+
 - findAndUpdate(conditions, update)
 - findByIdAndUpdate(id, update)
+
+**Delete**
+
 - findAndDelete(conditions)
 - findByIdAndDelete(id)

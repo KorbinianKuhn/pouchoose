@@ -53,10 +53,7 @@ describe('Model', async () => {
   });
 
   it('insertMany()', async () => {
-    const person = await Person.insertMany([
-      { name: 'Jane Doe' },
-      { name: 'John Doe' },
-    ]);
+    await Person.insertMany([{ name: 'Jane Doe' }, { name: 'John Doe' }]);
 
     const count = await connection.countAllDocuments();
     expect(count).to.equal(2);
@@ -151,12 +148,14 @@ describe('Model', async () => {
     expect(count3).to.equal(0);
   });
 
-  it.only('findByIdAndDelete()', async () => {
-    const [jane, john, lisa] = await Person.insertMany([
+  it('findByIdAndDelete()', async () => {
+    const res = await Person.insertMany([
       { name: 'Jane Doe' },
       { name: 'John Doe' },
       { name: 'Lisa Doe' },
     ]);
+
+    const john = res[1];
 
     const doc = await Person.findByIdAndDelete(john._id);
     expect(doc._id).to.equal(john._id);
