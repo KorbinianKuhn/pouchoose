@@ -1,15 +1,18 @@
 import { Connection } from '../connection/connection.class';
-
-export class Query<T = any> {
-  private pipeline: any[] = [];
+import { Document } from '../document/document.class';
+import { Schema } from '../schema/schema.class';
+import { QueryConditions } from './query.interfaces';
+export abstract class Query<T extends Document> {
+  public pipeline: any[] = [];
 
   constructor(
-    private query: PouchDB.Find.FindRequest<T>,
-    private connection: Connection
+    public query: QueryConditions,
+    public connection: Connection,
+    public schema: Schema
   ) {}
 
-  sort(args: Array<string | { [propName: string]: 'asc' | 'desc' }>): this {
-    this.query.sort = args;
+  skip(value: number): this {
+    this.query.request.skip = value;
     return this;
   }
 
@@ -21,13 +24,13 @@ export class Query<T = any> {
     return this;
   }
 
-  async exec(): Promise<T[]> {
-    const res = await this.connection.db.find(this.query);
+  protected async _exec(): Promise<T[]> {
+    const res = await this.connection.db.find(this.query.request);
 
     for (const step of this.pipeline) {
       // TODO: execute pipeline steps
     }
 
-    return res.docs as any[];
+    return res.docs.map((doc) => new Document(this.schema.validate(doc)) as T);
   }
 }

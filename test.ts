@@ -27,27 +27,38 @@ const main = async () => {
   const connection = await connect('_pouch_test_db');
   // const person = await Person.create({ name: 'Jane Doe' });
 
+  // const test = personSchema.validate({
+  //   name: 'test',
+  //   nested: { verified: false },
+  // });
+  // console.log(test);
   // const res1 = await Person.findOne({}).exec();
   // console.log(res1);
 
-  // const res2 = await Person.find({}).exec();
-  // console.log(res2);
+  const res2 = await Person.find({}).exec();
+  console.log(res2[0].toJSON());
+
+  const res3 = await Person.findOne({}).exec();
+  console.log(res3.toJSON());
+
+  const res4 = await Person.findById('test').exec();
+  console.log(res4);
 
   // const res3 = await Person.findById(
   //   'b9eaa400-c87b-4390-8cd0-1d9f61043e53'
   // ).exec();
   // console.log(res3);
 
-  const res4 = await Person.findByIdAndUpdate(
-    'b9eaa400-c87b-4390-8cd0-1d9f61043e53',
-    {
-      $set: {
-        name: 'John Doe',
-        age: 42,
-      },
-    }
-  );
-  console.log(res4);
+  // const res4 = await Person.findByIdAndUpdate(
+  //   'b9eaa400-c87b-4390-8cd0-1d9f61043e53',
+  //   {
+  //     $set: {
+  //       name: 'John Doe',
+  //       age: 42,
+  //     },
+  //   }
+  // );
+  // console.log(res4);
 
   // console.log(person);
   // const persons = await Person.find({});
