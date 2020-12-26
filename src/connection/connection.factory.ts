@@ -14,5 +14,7 @@ export const connect = async (
     setDefaultConnection(connection);
   }
 
+  await connection.reconnect();
+
   return connection;
 };

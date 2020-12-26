@@ -1,6 +1,7 @@
 import * as PouchDB from 'pouchdb';
 import * as PouchDBFind from 'pouchdb-find';
 import { Subject } from 'rxjs';
+import { Model } from '../model/model.class';
 import { Document } from './../document/document.class';
 import { DocumentChangeType } from './connection.enums';
 import { DocumentChangedEvent } from './connection.interfaces';
@@ -10,6 +11,7 @@ PouchDB.plugin(PouchDBFind);
 export class Connection {
   private dbChanges: PouchDB.Core.Changes<any>;
   private dbSyncHandler;
+  private models: Model<any>[] = [];
 
   public db: PouchDB.Database;
   public docChanged: Subject<DocumentChangedEvent> = new Subject();
@@ -18,15 +20,16 @@ export class Connection {
   constructor(
     private name: string,
     private options?: PouchDB.Configuration.DatabaseConfiguration
-  ) {
-    this.init(name, options);
+  ) {}
+
+  public async disconnect(): Promise<void> {
+    this.dbChanges.cancel();
+    this.dbChanges = null;
+    await this.db.close();
   }
 
-  public init(
-    name: string,
-    options?: PouchDB.Configuration.DatabaseConfiguration
-  ): void {
-    this.db = new PouchDB(name, options);
+  public async reconnect(): Promise<void> {
+    this.db = new PouchDB(this.name, this.options);
     this.dbChanges = this.db
       .changes({ live: true, since: 'now', include_docs: true })
       .on('change', (value: PouchDB.Core.ChangesResponseChange<any>) => {
@@ -40,16 +43,6 @@ export class Connection {
       .on('error', (value: any) => console.error('error', value));
     // .on('complete', (value: PouchDB.Core.ChangesResponse<any>) => {});
     this.docChangedEventsEnabled = true;
-  }
-
-  public async disconnect(): Promise<void> {
-    this.dbChanges.cancel();
-    this.dbChanges = null;
-    await this.db.close();
-  }
-
-  public async reconnect(): Promise<void> {
-    this.init(this.name, this.options);
   }
 
   public enableEvents(): void {
@@ -85,7 +78,13 @@ export class Connection {
   public async getAllDocuments(): Promise<Document[]> {
     const docs = await this.db.allDocs({ include_docs: true });
 
-    return docs.rows.map((doc) => new Document(doc as any));
+    return docs.rows.map(
+      (doc) =>
+        new Document(
+          doc as any,
+          null // this.models.find((o) => doc?.$type === o.name)
+        )
+    );
   }
 
   private getChangeType(
@@ -98,5 +97,9 @@ export class Connection {
     } else {
       return DocumentChangeType.UPDATE;
     }
+  }
+
+  public registerModel(model: Model<any>): void {
+    this.models.push(model);
   }
 }

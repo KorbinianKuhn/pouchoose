@@ -2,6 +2,10 @@ export interface SchemaDefinition {
   [path: string]: SchemaType;
 }
 
+export interface SchemaOptions {
+  timestamps?: boolean;
+}
+
 export type SchemaType =
   | any
   | Array<SchemaType>
@@ -14,4 +18,5 @@ export interface SchemaTypeObject {
   required?: boolean;
   ref?: string;
   default?: any;
+  validate?: (value: any) => void | any;
 }

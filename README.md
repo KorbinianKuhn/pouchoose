@@ -51,23 +51,29 @@ const doc = await Person.create({ name: 'Jane Doe' });
 await Person.find().exec();
 ```
 
-**Create**
+### Create
 
 - create(doc)
 - insertMany(docs)
 
-**Read**
+### Read
 
 - find(conditions).exec()
 - findById(id).exec()
 - findOne(conditions).exec()
 
-**Update**
+### Update
 
 - findAndUpdate(conditions, update)
 - findByIdAndUpdate(id, update)
 
-**Delete**
+### Delete
 
 - findAndDelete(conditions)
 - findByIdAndDelete(id)
+
+## Hooks
+
+Not implemented
+
+## Changes

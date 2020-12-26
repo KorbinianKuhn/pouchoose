@@ -32,6 +32,8 @@ export abstract class Query<T extends Document> {
     //   // TODO: execute pipeline steps
     // }
 
-    return res.docs.map((doc) => new Document(this.schema.validate(doc)) as T);
+    return res.docs.map(
+      (doc) => new Document(this.schema.validate(doc), null) as T
+    );
   }
 }

@@ -1,17 +1,19 @@
-import * as Joi from 'joi';
-import { SchemaDefinition } from './schema.interfaces';
+import { ObjectSchema } from '../validation/object.schema';
+import { StringSchema } from '../validation/string.schema';
+import { SchemaDefinition, SchemaOptions } from './schema.interfaces';
+import { SchemaHookType } from './schema.types';
 import { transformSchemaDefinitionToJoiSchema } from './schema.utils';
 
 export class Schema {
-  private schema: Joi.Schema;
+  private schema: ObjectSchema;
 
-  constructor(definition: SchemaDefinition) {
-    this.schema = transformSchemaDefinitionToJoiSchema(definition);
+  constructor(definition: SchemaDefinition, options: SchemaOptions = {}) {
+    this.schema = transformSchemaDefinitionToJoiSchema(definition, options);
   }
 
   setType(name: string): void {
-    this.schema = (this.schema as Joi.ObjectSchema).append({
-      $type: Joi.string().only().allow(name).default(name),
+    this.schema = this.schema.append({
+      $type: new StringSchema().only().allow(name).default(name),
     });
   }
 
@@ -22,5 +24,13 @@ export class Schema {
     } else {
       return res.value;
     }
+  }
+
+  pre(method: SchemaHookType, fn: (doc: Document) => Promise<void>): void {
+    return;
+  }
+
+  post(method: SchemaHookType, fn: (doc: Document) => Promise<void>): void {
+    return;
   }
 }

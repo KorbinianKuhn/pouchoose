@@ -20,11 +20,12 @@ export class Model<T extends Document> {
   }
 
   constructor(
-    private name: string,
+    public name: string,
     private schema: Schema,
     private options: ModelOptions = {}
   ) {
     this.schema.setType(this.name);
+    // this.connection.registerModel(this);
     // this.connection.docChanged
     //   .pipe(filter((event) => event.doc.$type === this.name))
     //   .subscribe((event) => {
@@ -48,11 +49,14 @@ export class Model<T extends Document> {
 
     const res = await this.connection.db.post(value);
 
-    return new Document({
-      ...value,
-      _id: res.id,
-      _rev: res.rev,
-    }) as T;
+    return new Document(
+      {
+        ...value,
+        _id: res.id,
+        _rev: res.rev,
+      },
+      this
+    ) as T;
   }
 
   async insertMany(docs: Partial<T>[]): Promise<T[]> {
@@ -146,7 +150,7 @@ export class Model<T extends Document> {
   async findByIdAndUpdate(id: string, update: UpdateQuery<T>): Promise<T> {
     const res = await this.connection.db.get(id);
 
-    const doc = new Document(res) as T;
+    const doc = new Document(res, this) as T;
 
     for (const operation of Object.keys(update)) {
       switch (operation) {
