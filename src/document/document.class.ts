@@ -22,8 +22,44 @@ export class Document {
     return obj;
   }
 
+  get(path: string): any {
+    try {
+      return path.split('.').reduce((a: any, v: string) => a[v], this);
+    } catch (err) {
+      throw new Error(`Invalid path: ${path}`);
+    }
+  }
+
   set(path: string, value: unknown): void {
-    this[path] = value;
+    try {
+      const elements = path.split('.');
+      const last = elements.pop();
+      let obj = this;
+
+      for (const element of elements) {
+        obj = obj[element];
+      }
+
+      obj[last] = value;
+    } catch (err) {
+      throw new Error(`Invalid path: ${path}`);
+    }
+  }
+
+  unset(path: string): void {
+    try {
+      const elements = path.split('.');
+      const last = elements.pop();
+      let obj = this;
+
+      for (const element of elements) {
+        obj = obj[element];
+      }
+
+      delete obj[last];
+    } catch (err) {
+      throw new Error(`Invalid path: ${path}`);
+    }
   }
 
   async save(): Promise<this> {

@@ -16,4 +16,6 @@ const main = async () => {
   const person = await Person.create();
 
   const lean = await Person.findOne().lean();
+
+  const lean = await Person.update().lean();
 };

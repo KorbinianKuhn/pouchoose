@@ -47,30 +47,23 @@ const Person = model<IPerson>('Person', personSchema);
 ```typescript
 const doc = await Person.create({ name: 'Jane Doe' });
 
-// Read Queries require exec() call at the end
-await Person.find().exec();
+await Person.find();
 ```
 
-### Create
+### Methods
 
+- count(conditions)
 - create(doc)
-- insertMany(docs)
-
-### Read
-
-- find(conditions).exec()
-- findById(id).exec()
-- findOne(conditions).exec()
-
-### Update
-
-- findAndUpdate(conditions, update)
-- findByIdAndUpdate(id, update)
-
-### Delete
-
+- find(conditions)
 - findAndDelete(conditions)
+- findAndUpdate(conditions, update)
+- findById(id)
 - findByIdAndDelete(id)
+- findByIdAndUpdate(id, update)
+- findOne(conditions)
+- findOneAndDelete(conditions)
+- findOneAndUpdate(conditions, update)
+- insertMany(docs)
 
 ## Hooks
 

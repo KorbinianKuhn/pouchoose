@@ -2,13 +2,23 @@ import { ObjectSchema } from '../validation/object.schema';
 import { StringSchema } from '../validation/string.schema';
 import { SchemaDefinition, SchemaOptions } from './schema.interfaces';
 import { SchemaHookType } from './schema.types';
-import { transformSchemaDefinitionToJoiSchema } from './schema.utils';
+import { transformSchemaDefinitionToValidationSchema } from './schema.utils';
 
 export class Schema {
   private schema: ObjectSchema;
 
   constructor(definition: SchemaDefinition, options: SchemaOptions = {}) {
-    this.schema = transformSchemaDefinitionToJoiSchema(definition, options);
+    this.schema = transformSchemaDefinitionToValidationSchema(
+      definition,
+      options
+    );
+  }
+
+  getIndexedKeys(): string[] {
+    const keys = this.schema.keys;
+    return Object.keys(keys)
+      .filter((s) => keys[s]._index)
+      .map((s) => s);
   }
 
   setType(name: string): void {

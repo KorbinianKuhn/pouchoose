@@ -9,6 +9,9 @@ import { DocumentChangedEvent } from './connection.interfaces';
 PouchDB.plugin(PouchDBFind);
 
 export class Connection {
+  public name: string;
+
+  private options: PouchDB.Configuration.DatabaseConfiguration;
   private dbChanges: PouchDB.Core.Changes<any>;
   private dbSyncHandler;
   private models: Model<any>[] = [];
@@ -17,10 +20,13 @@ export class Connection {
   public docChanged: Subject<DocumentChangedEvent> = new Subject();
   private docChangedEventsEnabled: boolean;
 
-  constructor(
-    private name: string,
-    private options?: PouchDB.Configuration.DatabaseConfiguration
-  ) {}
+  public configure(
+    name: string,
+    options?: PouchDB.Configuration.DatabaseConfiguration
+  ) {
+    this.name = name;
+    this.options = options;
+  }
 
   public async disconnect(): Promise<void> {
     this.dbChanges.cancel();
@@ -29,7 +35,11 @@ export class Connection {
   }
 
   public async reconnect(): Promise<void> {
+    // Create DB
     this.db = new PouchDB(this.name, this.options);
+
+    // Listen for events
+    this.docChangedEventsEnabled = true;
     this.dbChanges = this.db
       .changes({ live: true, since: 'now', include_docs: true })
       .on('change', (value: PouchDB.Core.ChangesResponseChange<any>) => {
@@ -42,7 +52,9 @@ export class Connection {
       })
       .on('error', (value: any) => console.error('error', value));
     // .on('complete', (value: PouchDB.Core.ChangesResponse<any>) => {});
-    this.docChangedEventsEnabled = true;
+
+    // Create indexes
+    await this.ensureIndexes();
   }
 
   public enableEvents(): void {
@@ -79,10 +91,10 @@ export class Connection {
     const docs = await this.db.allDocs({ include_docs: true });
 
     return docs.rows.map(
-      (doc) =>
+      (row) =>
         new Document(
-          doc as any,
-          null // this.models.find((o) => doc?.$type === o.name)
+          row.doc as any,
+          this.models.find((o) => (row.doc as any).$type === o.name)
         )
     );
   }
@@ -101,5 +113,38 @@ export class Connection {
 
   public registerModel(model: Model<any>): void {
     this.models.push(model);
+    if (this.db) {
+      // TODO: create indexes
+    }
+  }
+
+  private async ensureIndexes(): Promise<void> {
+    const dto: { name: string; fields: string[] }[] = [
+      {
+        name: '$type',
+        fields: ['$type'],
+      },
+    ];
+
+    for (const model of this.models) {
+      for (const key of model.getIndexedKeys()) {
+        const fields = ['$type', key];
+        const name = fields.join('-');
+        if (!dto.some((o) => o.name === name)) {
+          dto.push({ name, fields });
+        }
+      }
+    }
+
+    await Promise.all(
+      dto.map((o) =>
+        this.db.createIndex({
+          index: {
+            name: o.name,
+            fields: o.fields,
+          },
+        })
+      )
+    );
   }
 }

@@ -56,25 +56,30 @@ const getDateSchema = (definition: SchemaTypeObject): DateSchema => {
 };
 
 const getArraySchema = (definition: SchemaDefinition): ArraySchema => {
-  const items = [];
-  return extendSchema(new ArraySchema(items), definition);
+  const schemas = definition.type as Array<SchemaDefinition>;
+  const items: AnySchema[] =
+    schemas.length === 0
+      ? [new AnySchema()]
+      : schemas.map((d) => transformDefinitionToValidationSchema(d));
+
+  return extendSchema(new ArraySchema(items), definition) as ArraySchema;
 };
 
 const getObjectSchema = (definition: SchemaDefinition): ObjectSchema => {
   const keys: any = {};
   for (const key of Object.keys(definition)) {
-    keys[key] = transformDefinitionToJoiSchema(definition[key]);
+    keys[key] = transformDefinitionToValidationSchema(definition[key]);
   }
 
   return extendSchema(new ObjectSchema(keys), definition) as ObjectSchema;
 };
 
-const transformDefinitionToJoiSchema = (
+const transformDefinitionToValidationSchema = (
   definition: SchemaDefinition
 ): AnySchema => {
   // Array
   if (Array.isArray(definition)) {
-    return getArraySchema(definition);
+    return getArraySchema({ type: definition });
   }
 
   // Primitive
@@ -96,15 +101,18 @@ const transformDefinitionToJoiSchema = (
 
   // Definition
   if (Object.keys(definition).includes('type')) {
+    if (Array.isArray(definition.type)) {
+      return getArraySchema(definition);
+    }
     switch (definition.type.name) {
       case 'Boolean':
         return getBooleanSchema(definition as SchemaTypeObject);
       case 'Number':
         return getNumberSchema(definition as SchemaTypeObject);
       case 'String':
-        return getStringSchema({ type: String });
+        return getStringSchema(definition as SchemaTypeObject);
       case 'Date':
-        return getDateSchema({ type: Date });
+        return getDateSchema(definition as SchemaTypeObject);
       default:
         throw new Error(`Unsupported Schema type: ${definition.type.name}`);
     }
@@ -114,7 +122,7 @@ const transformDefinitionToJoiSchema = (
   return getObjectSchema(definition);
 };
 
-export const transformSchemaDefinitionToJoiSchema = (
+export const transformSchemaDefinitionToValidationSchema = (
   definition: SchemaDefinition,
   options: SchemaOptions
 ): ObjectSchema => {
@@ -127,7 +135,7 @@ export const transformSchemaDefinitionToJoiSchema = (
   // TODO Use timestamps from SchemaOption
 
   for (const key of Object.keys(definition)) {
-    keys[key] = transformDefinitionToJoiSchema(definition[key]);
+    keys[key] = transformDefinitionToValidationSchema(definition[key]);
   }
 
   return new ObjectSchema(keys);

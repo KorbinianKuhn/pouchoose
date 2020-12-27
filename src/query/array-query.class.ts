@@ -13,7 +13,17 @@ export class ArrayQuery<T extends Document> extends Query<T> {
   }
 
   async exec(): Promise<T[]> {
-    const docs = await super._exec();
-    return docs;
+    return super._exec();
+  }
+
+  then(
+    resolve: (value: T[]) => T[] | PromiseLike<T[]>,
+    reject: (reason: any) => void | PromiseLike<void>
+  ): Promise<void | T[]> {
+    return this.exec().then(resolve, reject);
+  }
+
+  catch(reject: (reason: any) => PromiseLike<never>): Promise<T[]> {
+    return this.exec().then(null, reject);
   }
 }

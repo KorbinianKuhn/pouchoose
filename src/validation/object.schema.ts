@@ -4,7 +4,7 @@ import { ValidationError } from './validation.error';
 import { ValidationResult } from './validation.interfaces';
 
 export class ObjectSchema extends AnySchema {
-  constructor(private keys: { [key: string]: AnySchema }) {
+  constructor(public keys: { [key: string]: AnySchema }) {
     super();
   }
 

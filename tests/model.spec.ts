@@ -59,23 +59,32 @@ describe('Model', async () => {
     expect(count).to.equal(2);
   });
 
+  it('count()', async () => {
+    const count = await Person.count();
+    expect(count).to.equal(0);
+
+    await Person.insertMany([{ name: 'Jane Doe' }, { name: 'Jane Doe' }]);
+    const count2 = await Person.count();
+    expect(count2).to.equal(2);
+  });
+
   it('find()', async () => {
     const person = await Person.create({ name: 'Jane Doe' });
 
-    const res = await Person.find().exec();
+    const res = await Person.find();
 
     expect(person.toJSON()).to.deep.equal(res[0].toJSON());
 
     await Person.create({ name: 'John Doe' });
 
-    const res2 = await Person.find().exec();
+    const res2 = await Person.find();
     expect(res2).to.have.lengthOf(2);
   });
 
   it('findOne()', async () => {
     const person = await Person.create({ name: 'Jane Doe' });
 
-    const res = await Person.findOne().exec();
+    const res = await Person.findOne();
 
     expect(person.toJSON()).to.deep.equal(res.toJSON());
   });
@@ -85,7 +94,7 @@ describe('Model', async () => {
 
     person.toJSON();
 
-    const res = await Person.findById(person._id).exec();
+    const res = await Person.findById(person._id);
 
     expect(person.toJSON()).to.deep.equal(res.toJSON());
   });

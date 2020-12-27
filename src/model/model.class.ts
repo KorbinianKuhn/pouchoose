@@ -1,13 +1,16 @@
 import { Subject } from 'rxjs';
+import { filter } from 'rxjs/operators';
 import { Connection } from '../connection/connection.class';
-import { getDefaultConnection } from '../connection/connection.constants';
+import { DocumentChangeType } from '../connection/connection.enums';
 import { Document } from '../document/document.class';
 import { ArrayQuery } from '../query/array-query.class';
 import { QueryOperation } from '../query/query.enums';
 import { FilterQuery, UpdateQuery } from '../query/query.interfaces';
 import { Schema } from '../schema/schema.class';
+import { DEFAULT_CONNECTION } from './../connection/connection.constants';
 import { SingleQuery } from './../query/single-query.class';
 import { ModelOptions } from './model.interfaces';
+import { applyUpdateQueryToDocs } from './model.utils';
 
 export class Model<T extends Document> {
   public changed = new Subject<T>();
@@ -16,7 +19,7 @@ export class Model<T extends Document> {
   public deleted = new Subject<T>();
 
   get connection(): Connection {
-    return this.options.connection || getDefaultConnection();
+    return this.options.connection || DEFAULT_CONNECTION;
   }
 
   constructor(
@@ -25,23 +28,27 @@ export class Model<T extends Document> {
     private options: ModelOptions = {}
   ) {
     this.schema.setType(this.name);
-    // this.connection.registerModel(this);
-    // this.connection.docChanged
-    //   .pipe(filter((event) => event.doc.$type === this.name))
-    //   .subscribe((event) => {
-    //     switch (event.type) {
-    //       case DocumentChangeType.ADD:
-    //         this.added.next(event.doc as T);
-    //         break;
-    //       case DocumentChangeType.UPDATE:
-    //         this.added.next(event.doc as T);
-    //         break;
-    //       case DocumentChangeType.DELETE:
-    //         this.added.next(event.doc as T);
-    //         break;
-    //     }
-    //     this.changed.next(event.doc as T);
-    //   });
+    this.connection.registerModel(this);
+    this.connection.docChanged
+      .pipe(filter((event) => event.doc.$type === this.name))
+      .subscribe((event) => {
+        switch (event.type) {
+          case DocumentChangeType.ADD:
+            this.added.next(event.doc as T);
+            break;
+          case DocumentChangeType.UPDATE:
+            this.added.next(event.doc as T);
+            break;
+          case DocumentChangeType.DELETE:
+            this.added.next(event.doc as T);
+            break;
+        }
+        this.changed.next(event.doc as T);
+      });
+  }
+
+  getIndexedKeys(): string[] {
+    return this.schema.getIndexedKeys();
   }
 
   async create(doc: Partial<T>): Promise<T> {
@@ -72,14 +79,26 @@ export class Model<T extends Document> {
     return values;
   }
 
+  async count(conditions: FilterQuery = {}): Promise<number> {
+    const res = await this.connection.db.find({
+      selector: {
+        ...conditions,
+        $type: this.name,
+      },
+      fields: ['_id'],
+    });
+
+    return res.docs.length;
+  }
+
   find(conditions: FilterQuery = {}): ArrayQuery<T> {
     return new ArrayQuery(
       {
         type: QueryOperation.FIND,
         request: {
           selector: {
-            $type: this.name,
             ...conditions,
+            $type: this.name,
           },
         },
       },
@@ -94,8 +113,8 @@ export class Model<T extends Document> {
         type: QueryOperation.FIND_ONE,
         request: {
           selector: {
-            $type: this.name,
             ...conditions,
+            $type: this.name,
           },
           limit: 1,
         },
@@ -103,6 +122,33 @@ export class Model<T extends Document> {
       this.connection,
       this.schema
     );
+  }
+
+  async findOneAndDelete(conditions: FilterQuery = {}): Promise<T> {
+    const doc = await this.findOne(conditions);
+
+    doc._deleted = true;
+
+    const res = await this.connection.db.put(doc);
+
+    doc._rev = res.rev;
+
+    return doc;
+  }
+
+  async findOneAndUpdate(
+    conditions: FilterQuery = {},
+    update: UpdateQuery<T>
+  ): Promise<T> {
+    const doc = await this.findOne(conditions);
+
+    applyUpdateQueryToDocs([doc], update);
+
+    const res = await this.connection.db.put(doc);
+
+    doc._rev = res.rev;
+
+    return doc;
   }
 
   findById(id: string): SingleQuery<T> {
@@ -125,19 +171,9 @@ export class Model<T extends Document> {
     conditions: FilterQuery = {},
     update: UpdateQuery<T>
   ): Promise<T[]> {
-    const docs = await this.find(conditions).exec();
+    const docs = await this.find(conditions);
 
-    for (const doc of docs) {
-      for (const operation of Object.keys(update)) {
-        switch (operation) {
-          case '$set': {
-            for (const path of Object.keys(update.$set)) {
-              doc.set(path, update.$set[path]);
-            }
-          }
-        }
-      }
-    }
+    applyUpdateQueryToDocs(docs, update);
 
     const res = await this.connection.db.bulkDocs(docs.map((o) => o.toJSON()));
     for (let i = 0; i < docs.length; i++) {
@@ -152,15 +188,7 @@ export class Model<T extends Document> {
 
     const doc = new Document(res, this) as T;
 
-    for (const operation of Object.keys(update)) {
-      switch (operation) {
-        case '$set': {
-          for (const path of Object.keys(update.$set)) {
-            doc.set(path, update.$set[path]);
-          }
-        }
-      }
-    }
+    applyUpdateQueryToDocs([doc], update);
 
     const res2 = await this.connection.db.put(doc);
 
