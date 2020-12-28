@@ -20,6 +20,7 @@
     "@types/mocha": "^8.2.0",
     "@types/mongoose": "^5.7.36",
     "@types/pouchdb": "^6.4.0",
+    "@types/uuid": "^8.3.0",
     "@typescript-eslint/eslint-plugin": "^4.10.0",
     "@typescript-eslint/parser": "^4.10.0",
     "chai": "^4.2.0",
@@ -38,6 +39,7 @@
   "dependencies": {
     "pouchdb": "^7.2.2",
     "pouchdb-find": "^7.2.2",
-    "rxjs": "^6.6.3"
+    "rxjs": "^6.6.3",
+    "uuid": "^8.3.2"
   }
 }

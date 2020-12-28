@@ -2,16 +2,31 @@ import { expect } from 'chai';
 import * as PouchDB from 'pouchdb';
 import * as PouchDBMemory from 'pouchdb-adapter-memory';
 import { GenericDoc } from '../src/document/document.interfaces';
-import { connect, Document, model, Schema } from '../src/public_api';
+import {
+  connect,
+  Connection,
+  Document,
+  model,
+  Schema,
+} from '../src/public_api';
 
 PouchDB.plugin(PouchDBMemory);
 
+let connection: Connection;
+before(async () => {
+  connection = await connect('test', {
+    adapter: 'memory',
+  });
+});
+
+afterEach(async () => {
+  delete connection.encrypt;
+  delete connection.decrypt;
+  await connection.removeAllDocuments();
+});
+
 describe('Connection', async () => {
   it('should have only default indexes', async () => {
-    const connection = await connect('test', {
-      adapter: 'memory',
-    });
-
     const indexes = await connection.getIndexes();
     expect(indexes.map((o) => o.name)).to.deep.equal(['$type']);
   });
@@ -24,21 +39,13 @@ describe('Connection', async () => {
       },
     });
 
-    const Person = model('Person', personSchema);
-
-    const connection = await connect('test', {
-      adapter: 'memory',
-    });
+    model('Person', personSchema);
 
     const indexes = await connection.getIndexes();
     expect(indexes.map((o) => o.name)).to.deep.equal(['$type', '$type-name']);
   });
 
-  it.only('encryption and decryption should work', async () => {
-    const connection = await connect('test', {
-      adapter: 'memory',
-    });
-
+  it('encryption and decryption should work', async () => {
     let encryptCalled = 0;
     connection.encrypt = async (docs: GenericDoc[]): Promise<GenericDoc[]> => {
       encryptCalled++;

@@ -80,7 +80,7 @@ const persons = await Person.find();
 const userSchema = new Schema({
   name: String,
   comments: {
-    type: 'Ref',
+    type: String,
     ref: 'Comment',
   },
 });
@@ -89,7 +89,7 @@ const User = model('User', userSchema);
 const commentSchema = new Schema({
   message: String,
   user: {
-    type: 'Ref',
+    type: String,
     ref: 'User',
   },
 });
@@ -111,6 +111,8 @@ Not implemented
 Use callbacks to enable encryption with your custom logic and encryption library of choice (e.g. node-forge). These callbacks are executed on every CRUD-Operation, e.g. on a read-query before schema validation or on a write-query after schema validation.
 
 ```typescript
+import { GenericDoc } from 'pouchoose';
+
 connection.encrypt = async (docs: GenericDoc[]): Promise<GenericDoc[]> => {
   return docs.map((doc) => {
     const encrypted: GenericDoc = {};

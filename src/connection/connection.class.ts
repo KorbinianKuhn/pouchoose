@@ -1,29 +1,29 @@
 import * as PouchDB from 'pouchdb';
 import * as PouchDBFind from 'pouchdb-find';
 import { Subject } from 'rxjs';
+import { v4 } from 'uuid';
 import { Model } from '../model/model.class';
-import { GenericDoc } from './../document/document.interfaces';
-import { DocumentChangeType } from './connection.enums';
+import { Remote } from '../remote/remote.class';
+import {
+  DocumentChange,
+  DocumentStream,
+  GenericDoc,
+} from './../document/document.interfaces';
 import {
   DecryptionCallback,
-  DocumentChangedEvent,
   EncryptionCallback,
 } from './connection.interfaces';
 
 PouchDB.plugin(PouchDBFind);
 
 export class Connection {
-  public name: string;
-
   private options: PouchDB.Configuration.DatabaseConfiguration;
   private dbChanges: PouchDB.Core.Changes<any>;
-  private dbSyncHandler;
+  private stream = new Subject<DocumentStream<any>>();
   private models: Model<any>[] = [];
 
+  public name: string;
   public db: PouchDB.Database;
-  public docChanged: Subject<DocumentChangedEvent> = new Subject();
-  private docChangedEventsEnabled: boolean;
-
   public encrypt: EncryptionCallback;
   public decrypt: DecryptionCallback;
 
@@ -37,7 +37,7 @@ export class Connection {
 
   public async disconnect(): Promise<void> {
     this.dbChanges.cancel();
-    this.dbChanges = null;
+    delete this.dbChanges;
     await this.db.close();
   }
 
@@ -46,17 +46,11 @@ export class Connection {
     this.db = new PouchDB(this.name, this.options);
 
     // Listen for events
-    this.docChangedEventsEnabled = true;
     this.dbChanges = this.db
       .changes({ live: true, since: 'now', include_docs: true })
-      .on('change', (value: PouchDB.Core.ChangesResponseChange<any>) => {
-        if (this.docChangedEventsEnabled) {
-          this.docChanged.next({
-            type: this.getChangeType(value),
-            doc: value.doc,
-          });
-        }
-      })
+      .on('change', (value: PouchDB.Core.ChangesResponseChange<any>) =>
+        this.onPouchdbChange(value)
+      )
       .on('error', (value: any) => console.error('error', value));
     // .on('complete', (value: PouchDB.Core.ChangesResponse<any>) => {});
 
@@ -64,12 +58,12 @@ export class Connection {
     await this.ensureIndexes();
   }
 
-  public enableEvents(): void {
-    this.docChangedEventsEnabled = true;
+  public remote(remote: PouchDB.Database): Remote {
+    return new Remote(this, remote);
   }
 
-  public disableEvents(): void {
-    this.docChangedEventsEnabled = false;
+  public id(): string {
+    return v4();
   }
 
   public async getIndexes(): Promise<PouchDB.Find.Index[]> {
@@ -85,9 +79,9 @@ export class Connection {
 
   public async removeAllDocuments(): Promise<void> {
     this.dbChanges.cancel();
-    this.dbChanges = null;
+    delete this.dbChanges;
     await this.db.destroy();
-    this.db = null;
+    delete this.db;
     await this.reconnect();
   }
 
@@ -103,18 +97,6 @@ export class Connection {
     const docs = await this.db.allDocs({ include_docs: true });
 
     return docs.rows.map((row) => row.doc);
-  }
-
-  private getChangeType(
-    value: PouchDB.Core.ChangesResponseChange<any>
-  ): DocumentChangeType {
-    if (value.deleted) {
-      return DocumentChangeType.DELETE;
-    } else if (value.doc._rev && /^1-.*/.test(value.doc._rev)) {
-      return DocumentChangeType.ADD;
-    } else {
-      return DocumentChangeType.UPDATE;
-    }
   }
 
   public registerModel(model: Model<any>): void {
@@ -152,5 +134,26 @@ export class Connection {
         })
       )
     );
+  }
+
+  private onPouchdbChange(
+    value: PouchDB.Core.ChangesResponseChange<any>
+  ): void {
+    const change: DocumentChange = value.deleted
+      ? 'delete'
+      : /^1-.*/.test(value.doc._rev)
+      ? 'add'
+      : 'update';
+
+    // TODO: convert to Document?
+
+    this.stream.next({
+      change,
+      doc: value.doc,
+    });
+  }
+
+  public watch(): Subject<DocumentStream<any>> {
+    return this.stream;
   }
 }

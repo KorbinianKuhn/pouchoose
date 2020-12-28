@@ -7,7 +7,10 @@ import { transformSchemaDefinitionToValidationSchema } from './schema.utils';
 export class Schema {
   private schema: ObjectSchema;
 
-  constructor(definition: SchemaDefinition, options: SchemaOptions = {}) {
+  constructor(
+    private definition: SchemaDefinition,
+    public options: SchemaOptions = {}
+  ) {
     this.schema = transformSchemaDefinitionToValidationSchema(
       definition,
       options

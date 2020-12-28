@@ -6,6 +6,8 @@ import { QueryConditions } from './query.interfaces';
 export abstract class Query<T extends Document> {
   public pipeline: any[] = [];
 
+  private _lean: boolean = false;
+
   constructor(
     public query: QueryConditions,
     public connection: Connection,
@@ -18,6 +20,7 @@ export abstract class Query<T extends Document> {
   }
 
   lean(): this {
+    this._lean = true;
     return this;
   }
 
@@ -36,8 +39,10 @@ export abstract class Query<T extends Document> {
     //   // TODO: execute pipeline steps
     // }
 
-    return decrypted.map(
-      (doc) => new Document(this.schema.validate(doc), null) as T
-    );
+    const validated = decrypted.map((o) => this.schema.validate(o));
+
+    return this._lean
+      ? validated
+      : validated.map((doc) => new Document(doc, null) as T);
   }
 }

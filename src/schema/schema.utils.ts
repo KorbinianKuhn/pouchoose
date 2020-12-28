@@ -132,7 +132,10 @@ export const transformSchemaDefinitionToValidationSchema = (
     _deleted: new BooleanSchema().required(false),
   };
 
-  // TODO Use timestamps from SchemaOption
+  if (options.timestamps) {
+    keys.createdAt = new DateSchema().required(false);
+    keys.modifiedAt = new DateSchema().required(false);
+  }
 
   for (const key of Object.keys(definition)) {
     keys[key] = transformDefinitionToValidationSchema(definition[key]);

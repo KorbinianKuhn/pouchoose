@@ -1,6 +1,7 @@
 import { Observable } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { Model } from '../model/model.class';
+import { DocumentStream } from './document.interfaces';
 export class Document {
   public $type: string;
   public _id: string;
@@ -11,7 +12,7 @@ export class Document {
     Object.assign(this, doc);
   }
 
-  toJSON(): any {
+  public toJSON(): any {
     const obj: any = {};
 
     const keys = Object.keys(this).filter((key) => !['model'].includes(key));
@@ -22,7 +23,11 @@ export class Document {
     return obj;
   }
 
-  get(path: string): any {
+  public version(): number {
+    return this._rev ? parseInt(this._rev[0]) : 0;
+  }
+
+  public get(path: string): any {
     try {
       return path.split('.').reduce((a: any, v: string) => a[v], this);
     } catch (err) {
@@ -30,7 +35,7 @@ export class Document {
     }
   }
 
-  set(path: string, value: unknown): void {
+  public set(path: string, value: unknown): void {
     try {
       const elements = path.split('.');
       const last = elements.pop();
@@ -46,7 +51,7 @@ export class Document {
     }
   }
 
-  unset(path: string): void {
+  public unset(path: string): void {
     try {
       const elements = path.split('.');
       const last = elements.pop();
@@ -62,28 +67,28 @@ export class Document {
     }
   }
 
-  async save(): Promise<this> {
+  public async save(): Promise<this> {
     const doc = this._id
       ? await this.model.findByIdAndUpdate(this._id, this.toJSON())
       : await this.model.create(this.toJSON());
 
-    Object.assign(this, doc);
+    Object.assign(this, doc.toJSON());
 
     return this;
   }
 
-  async delete(): Promise<this> {
+  public async delete(): Promise<this> {
     if (this._id) {
       const doc = await this.model.findByIdAndDelete(this._id);
 
-      Object.assign(this, doc);
+      Object.assign(this, doc.toJSON());
     } else {
       this._deleted = true;
     }
     return this;
   }
 
-  getObservable(): Observable<this> {
-    return this.model.changed.pipe<this>(filter((o) => o._id === this._id));
+  public watch(): Observable<DocumentStream<this>> {
+    return this.model.watch().pipe(filter((o) => o.doc._id === this._id));
   }
 }

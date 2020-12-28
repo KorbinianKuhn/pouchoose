@@ -17,5 +17,5 @@ const main = async () => {
 
   const lean = await Person.findOne().lean();
 
-  const lean = await Person.update().lean();
+  Person.watch().
 };

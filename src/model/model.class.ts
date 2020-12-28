@@ -1,22 +1,19 @@
 import { Subject } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { Connection } from '../connection/connection.class';
-import { DocumentChangeType } from '../connection/connection.enums';
 import { Document } from '../document/document.class';
 import { ArrayQuery } from '../query/array-query.class';
 import { QueryOperation } from '../query/query.enums';
 import { FilterQuery, UpdateQuery } from '../query/query.interfaces';
 import { Schema } from '../schema/schema.class';
 import { DEFAULT_CONNECTION } from './../connection/connection.constants';
+import { DocumentStream, GenericDoc } from './../document/document.interfaces';
 import { SingleQuery } from './../query/single-query.class';
 import { ModelOptions } from './model.interfaces';
 import { applyUpdateQueryToDocs } from './model.utils';
 
 export class Model<T extends Document> {
-  public changed = new Subject<T>();
-  public added = new Subject<T>();
-  public updated = new Subject<T>();
-  public deleted = new Subject<T>();
+  private stream = new Subject<DocumentStream<T>>();
 
   get connection(): Connection {
     return this.options.connection || DEFAULT_CONNECTION;
@@ -29,34 +26,51 @@ export class Model<T extends Document> {
   ) {
     this.schema.setType(this.name);
     this.connection.registerModel(this);
-    this.connection.docChanged
+    this.connection
+      .watch()
       .pipe(filter((event) => event.doc.$type === this.name))
-      .subscribe((event) => {
-        switch (event.type) {
-          case DocumentChangeType.ADD:
-            this.added.next(event.doc as T);
-            break;
-          case DocumentChangeType.UPDATE:
-            this.added.next(event.doc as T);
-            break;
-          case DocumentChangeType.DELETE:
-            this.added.next(event.doc as T);
-            break;
-        }
-        this.changed.next(event.doc as T);
-      });
+      .subscribe((event) => this.stream.next(event));
   }
 
-  getIndexedKeys(): string[] {
+  public watch(): Subject<DocumentStream<T>> {
+    return this.stream;
+  }
+
+  public getIndexedKeys(): string[] {
     return this.schema.getIndexedKeys();
   }
 
-  async create(doc: Partial<T>): Promise<T> {
-    const value = this.schema.validate(doc);
+  private preWrite(docs: Array<T | Partial<T>>): T[] {
+    return docs.map((o) => {
+      const data = this.schema.validate(o);
 
-    const [encrypted] = this.connection.encrypt
-      ? await this.connection.encrypt([value])
-      : [value];
+      // Timestamps
+      if (this.schema.options.timestamps) {
+        data.createdAt ??= new Date();
+        data.modifiedAt = new Date();
+      }
+
+      return data;
+    });
+  }
+
+  private async encrypt(docs: T[]): Promise<GenericDoc[]> {
+    if (this.connection.encrypt) {
+      return this.connection.encrypt(docs);
+    }
+    return docs;
+  }
+
+  private async decrypt(docs: GenericDoc[]): Promise<GenericDoc[]> {
+    if (this.connection.decrypt) {
+      return this.connection.decrypt(docs);
+    }
+    return docs;
+  }
+
+  public async create(doc: Partial<T>): Promise<T> {
+    const [value] = this.preWrite([doc]);
+    const [encrypted] = await this.encrypt([value]);
 
     const res = await this.connection.db.post(encrypted);
 
@@ -70,11 +84,11 @@ export class Model<T extends Document> {
     ) as T;
   }
 
-  async insertMany(docs: Partial<T>[]): Promise<T[]> {
-    // TODO: encryption
-    const values = docs.map((o) => this.schema.validate(o));
+  public async insertMany(docs: Partial<T>[]): Promise<T[]> {
+    const values = this.preWrite(docs);
+    const encrypted = await this.encrypt(values);
 
-    const res = await this.connection.db.bulkDocs(values);
+    const res = await this.connection.db.bulkDocs(encrypted);
 
     for (let i = 0; i < values.length; i++) {
       values[i]._id = res[i].id;
@@ -84,7 +98,7 @@ export class Model<T extends Document> {
     return values;
   }
 
-  async count(conditions: FilterQuery = {}): Promise<number> {
+  public async count(conditions: FilterQuery = {}): Promise<number> {
     const res = await this.connection.db.find({
       selector: {
         ...conditions,
@@ -96,7 +110,7 @@ export class Model<T extends Document> {
     return res.docs.length;
   }
 
-  find(conditions: FilterQuery = {}): ArrayQuery<T> {
+  public find(conditions: FilterQuery = {}): ArrayQuery<T> {
     return new ArrayQuery(
       {
         type: QueryOperation.FIND,
@@ -112,7 +126,7 @@ export class Model<T extends Document> {
     );
   }
 
-  findOne(conditions: FilterQuery = {}): SingleQuery<T> {
+  public findOne(conditions: FilterQuery = {}): SingleQuery<T> {
     return new SingleQuery(
       {
         type: QueryOperation.FIND_ONE,
@@ -129,36 +143,36 @@ export class Model<T extends Document> {
     );
   }
 
-  async findOneAndDelete(conditions: FilterQuery = {}): Promise<T> {
-    // TODO: encryption
-    const doc = await this.findOne(conditions);
-
-    doc._deleted = true;
-
-    const res = await this.connection.db.put(doc);
-
-    doc._rev = res.rev;
-
-    return doc;
+  public async findOneAndDelete(conditions: FilterQuery = {}): Promise<T> {
+    return this.findOneAndUpdate(conditions, {
+      $set: { _deleted: true },
+    });
   }
 
-  async findOneAndUpdate(
+  public async findOneAndUpdate(
     conditions: FilterQuery = {},
     update: UpdateQuery<T>
   ): Promise<T> {
-    // TODO: encryption
+    // Find doc
     const doc = await this.findOne(conditions);
 
+    if (doc === null) {
+      return null;
+    }
+
+    // Apply updates
     applyUpdateQueryToDocs([doc], update);
 
-    const res = await this.connection.db.put(doc);
+    // Write doc
+    const [encrypted] = await this.encrypt([doc.toJSON()]);
+    const res = await this.connection.db.put(encrypted);
 
+    // Get revision and return updated document
     doc._rev = res.rev;
-
     return doc;
   }
 
-  findById(id: string): SingleQuery<T> {
+  public findById(id: string): SingleQuery<T> {
     return new SingleQuery(
       {
         type: QueryOperation.FIND_BY_ID,
@@ -174,45 +188,39 @@ export class Model<T extends Document> {
     );
   }
 
-  async findAndUpdate(
+  public async findAndUpdate(
     conditions: FilterQuery = {},
     update: UpdateQuery<T>
   ): Promise<T[]> {
-    // TODO: encryption
+    // Find docs
     const docs = await this.find(conditions);
 
+    // Apply updates
     applyUpdateQueryToDocs(docs, update);
 
-    const res = await this.connection.db.bulkDocs(docs.map((o) => o.toJSON()));
+    // Write docs
+    const encrypted = await this.encrypt(docs.map((o) => o.toJSON()));
+    const res = await this.connection.db.bulkDocs(encrypted);
+
+    // Get revisions and return updated documents
     for (let i = 0; i < docs.length; i++) {
       docs[i]._rev = res[i].rev;
     }
-
     return docs;
   }
 
-  async findByIdAndUpdate(id: string, update: UpdateQuery<T>): Promise<T> {
-    // TODO: encryption
-    const res = await this.connection.db.get(id);
-
-    const doc = new Document(res, this) as T;
-
-    applyUpdateQueryToDocs([doc], update);
-
-    const res2 = await this.connection.db.put(doc);
-
-    doc._rev = res2.rev;
-
-    return doc;
+  public async findByIdAndUpdate(
+    id: string,
+    update: UpdateQuery<T>
+  ): Promise<T> {
+    return this.findOneAndUpdate({ _id: id }, update);
   }
 
-  async findAndDelete(conditions: FilterQuery = {}): Promise<T[]> {
-    // TODO: encryption
+  public async findAndDelete(conditions: FilterQuery = {}): Promise<T[]> {
     return this.findAndUpdate(conditions, { $set: { _deleted: true } });
   }
 
-  async findByIdAndDelete(id: string): Promise<T> {
-    // TODO: encryption
-    return this.findByIdAndUpdate(id, { $set: { _deleted: true } });
+  public async findByIdAndDelete(id: string): Promise<T> {
+    return this.findOneAndDelete({ _id: id });
   }
 }
