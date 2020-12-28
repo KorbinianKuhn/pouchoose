@@ -2,9 +2,13 @@ import * as PouchDB from 'pouchdb';
 import * as PouchDBFind from 'pouchdb-find';
 import { Subject } from 'rxjs';
 import { Model } from '../model/model.class';
-import { Document } from './../document/document.class';
+import { GenericDoc } from './../document/document.interfaces';
 import { DocumentChangeType } from './connection.enums';
-import { DocumentChangedEvent } from './connection.interfaces';
+import {
+  DecryptionCallback,
+  DocumentChangedEvent,
+  EncryptionCallback,
+} from './connection.interfaces';
 
 PouchDB.plugin(PouchDBFind);
 
@@ -19,6 +23,9 @@ export class Connection {
   public db: PouchDB.Database;
   public docChanged: Subject<DocumentChangedEvent> = new Subject();
   private docChangedEventsEnabled: boolean;
+
+  public encrypt: EncryptionCallback;
+  public decrypt: DecryptionCallback;
 
   public configure(
     name: string,
@@ -65,6 +72,12 @@ export class Connection {
     this.docChangedEventsEnabled = false;
   }
 
+  public async getIndexes(): Promise<PouchDB.Find.Index[]> {
+    const res = await this.db.getIndexes();
+
+    return res.indexes.filter((o) => o.name !== '_all_docs');
+  }
+
   public async isDbEmpty(): Promise<boolean> {
     const count = await this.countAllDocuments();
     return count === 0;
@@ -79,24 +92,17 @@ export class Connection {
   }
 
   public async countAllDocuments(): Promise<number> {
-    const info = await this.db.info();
-    return info.doc_count;
-    // const result = await this.db.allDocs();
-    // return result.rows
-    //   .map((o) => o.doc)
-    //   .filter((o) => !o._id.startsWith('_design/idx')).length;
+    const [info, indexes] = await Promise.all([
+      this.db.info(),
+      this.getIndexes(),
+    ]);
+    return info.doc_count - indexes.length;
   }
 
-  public async getAllDocuments(): Promise<Document[]> {
+  public async getAllDocuments(): Promise<GenericDoc[]> {
     const docs = await this.db.allDocs({ include_docs: true });
 
-    return docs.rows.map(
-      (row) =>
-        new Document(
-          row.doc as any,
-          this.models.find((o) => (row.doc as any).$type === o.name)
-        )
-    );
+    return docs.rows.map((row) => row.doc);
   }
 
   private getChangeType(

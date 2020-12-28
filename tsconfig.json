@@ -2,6 +2,9 @@
   "compilerOptions": {
     "target": "ES5",
     "allowSyntheticDefaultImports": true,
-    "noImplicitAny": false
-  }
+    "noImplicitAny": false,
+    "declaration": true,
+    "outDir": "dist"
+  },
+  "exclude": ["node_modules", "dist"]
 }

@@ -28,11 +28,15 @@ export abstract class Query<T extends Document> {
   protected async _exec(): Promise<T[]> {
     const res = await this.connection.db.find(this.query.request);
 
+    const decrypted = this.connection.decrypt
+      ? await this.connection.decrypt(res.docs)
+      : res.docs;
+
     // for (const step of this.pipeline) {
     //   // TODO: execute pipeline steps
     // }
 
-    return res.docs.map(
+    return decrypted.map(
       (doc) => new Document(this.schema.validate(doc), null) as T
     );
   }

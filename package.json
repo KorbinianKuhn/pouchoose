@@ -2,13 +2,15 @@
   "name": "pouchoose",
   "version": "0.0.0",
   "description": "Mongoose for pouchdb",
-  "main": "src/index.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "start": "node_modules/.bin/ts-node-dev test.ts",
     "test": "mocha -r ts-node/register tests/**/*.spec.ts",
     "coverage": "nyc -r lcov -e .ts -x \"*.spec.ts\" npm run test",
     "lint": "eslint --fix src tests",
-    "format": "prettier --write src tests"
+    "format": "prettier --write src tests",
+    "prepublish": "tsc"
   },
   "author": "Korbinian Kuhn",
   "license": "MIT",

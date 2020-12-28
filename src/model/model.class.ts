@@ -54,7 +54,11 @@ export class Model<T extends Document> {
   async create(doc: Partial<T>): Promise<T> {
     const value = this.schema.validate(doc);
 
-    const res = await this.connection.db.post(value);
+    const [encrypted] = this.connection.encrypt
+      ? await this.connection.encrypt([value])
+      : [value];
+
+    const res = await this.connection.db.post(encrypted);
 
     return new Document(
       {
@@ -67,6 +71,7 @@ export class Model<T extends Document> {
   }
 
   async insertMany(docs: Partial<T>[]): Promise<T[]> {
+    // TODO: encryption
     const values = docs.map((o) => this.schema.validate(o));
 
     const res = await this.connection.db.bulkDocs(values);
@@ -125,6 +130,7 @@ export class Model<T extends Document> {
   }
 
   async findOneAndDelete(conditions: FilterQuery = {}): Promise<T> {
+    // TODO: encryption
     const doc = await this.findOne(conditions);
 
     doc._deleted = true;
@@ -140,6 +146,7 @@ export class Model<T extends Document> {
     conditions: FilterQuery = {},
     update: UpdateQuery<T>
   ): Promise<T> {
+    // TODO: encryption
     const doc = await this.findOne(conditions);
 
     applyUpdateQueryToDocs([doc], update);
@@ -171,6 +178,7 @@ export class Model<T extends Document> {
     conditions: FilterQuery = {},
     update: UpdateQuery<T>
   ): Promise<T[]> {
+    // TODO: encryption
     const docs = await this.find(conditions);
 
     applyUpdateQueryToDocs(docs, update);
@@ -184,6 +192,7 @@ export class Model<T extends Document> {
   }
 
   async findByIdAndUpdate(id: string, update: UpdateQuery<T>): Promise<T> {
+    // TODO: encryption
     const res = await this.connection.db.get(id);
 
     const doc = new Document(res, this) as T;
@@ -198,10 +207,12 @@ export class Model<T extends Document> {
   }
 
   async findAndDelete(conditions: FilterQuery = {}): Promise<T[]> {
+    // TODO: encryption
     return this.findAndUpdate(conditions, { $set: { _deleted: true } });
   }
 
   async findByIdAndDelete(id: string): Promise<T> {
+    // TODO: encryption
     return this.findByIdAndUpdate(id, { $set: { _deleted: true } });
   }
 }
