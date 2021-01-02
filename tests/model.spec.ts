@@ -33,7 +33,8 @@ before(async () => {
 });
 
 beforeEach(async () => {
-  await connection.removeAllDocuments();
+  await connection.destroyDatabase();
+  await connection.reconnect();
 });
 
 describe('Model', async () => {
@@ -52,6 +53,15 @@ describe('Model', async () => {
     expect(count).to.equal(1);
   });
 
+  it('new()', async () => {
+    const jane = Person.new({ name: 'Jane Doe' });
+    await jane.save();
+
+    const res = await Person.findOne({ name: 'Jane Doe' });
+
+    expect(res.toJSON()).to.deep.equal(jane.toJSON());
+  });
+
   it('insertMany()', async () => {
     await Person.insertMany([{ name: 'Jane Doe' }, { name: 'John Doe' }]);
 
@@ -66,6 +76,15 @@ describe('Model', async () => {
     await Person.insertMany([{ name: 'Jane Doe' }, { name: 'Jane Doe' }]);
     const count2 = await Person.count();
     expect(count2).to.equal(2);
+  });
+
+  it('exists()', async () => {
+    const exists = await Person.exists({ name: 'Jane Doe' });
+    expect(exists).to.be.false;
+
+    await Person.create({ name: 'Jane Doe' });
+    const exists2 = await Person.exists({ name: 'Jane Doe' });
+    expect(exists2).to.be.true;
   });
 
   it('find()', async () => {

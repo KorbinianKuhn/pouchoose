@@ -13,7 +13,7 @@ import {
 PouchDB.plugin(PouchDBMemory);
 
 let connection: Connection;
-before(async () => {
+beforeEach(async () => {
   connection = await connect('test', {
     adapter: 'memory',
   });
@@ -22,7 +22,7 @@ before(async () => {
 afterEach(async () => {
   delete connection.encrypt;
   delete connection.decrypt;
-  await connection.removeAllDocuments();
+  await connection.destroyDatabase();
 });
 
 describe('Connection', async () => {
@@ -40,6 +40,8 @@ describe('Connection', async () => {
     });
 
     model('Person', personSchema);
+
+    await new Promise<void>((resolve) => setTimeout(() => resolve(), 1000));
 
     const indexes = await connection.getIndexes();
     expect(indexes.map((o) => o.name)).to.deep.equal(['$type', '$type-name']);

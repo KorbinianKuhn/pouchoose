@@ -3,11 +3,11 @@ import * as PouchDBFind from 'pouchdb-find';
 import { Subject } from 'rxjs';
 import { v4 } from 'uuid';
 import { Model } from '../model/model.class';
-import { Remote } from '../remote/remote.class';
+import { SyncHandler } from '../sync-handler/sync-handler.class';
 import {
   DocumentChange,
-  DocumentStream,
   GenericDoc,
+  GenericDocumentStream,
 } from './../document/document.interfaces';
 import {
   DecryptionCallback,
@@ -19,7 +19,7 @@ PouchDB.plugin(PouchDBFind);
 export class Connection {
   private options: PouchDB.Configuration.DatabaseConfiguration;
   private dbChanges: PouchDB.Core.Changes<any>;
-  private stream = new Subject<DocumentStream<any>>();
+  private stream = new Subject<GenericDocumentStream>();
   private models: Model<any>[] = [];
 
   public name: string;
@@ -55,11 +55,11 @@ export class Connection {
     // .on('complete', (value: PouchDB.Core.ChangesResponse<any>) => {});
 
     // Create indexes
-    await this.ensureIndexes();
+    await this.ensureIndexes(this.models);
   }
 
-  public remote(remote: PouchDB.Database): Remote {
-    return new Remote(this, remote);
+  public sync(db: PouchDB.Database): SyncHandler {
+    return new SyncHandler(this, db);
   }
 
   public id(): string {
@@ -77,14 +77,6 @@ export class Connection {
     return count === 0;
   }
 
-  public async removeAllDocuments(): Promise<void> {
-    this.dbChanges.cancel();
-    delete this.dbChanges;
-    await this.db.destroy();
-    delete this.db;
-    await this.reconnect();
-  }
-
   public async countAllDocuments(): Promise<number> {
     const [info, indexes] = await Promise.all([
       this.db.info(),
@@ -99,40 +91,61 @@ export class Connection {
     return docs.rows.map((row) => row.doc);
   }
 
+  public async deleteAllDocuments(): Promise<void> {
+    const docs = await this.getAllDocuments();
+    await this.db.bulkDocs(
+      docs.map((o) => {
+        o._deleted = true;
+        return o;
+      })
+    );
+  }
+
+  public async destroyDatabase(): Promise<void> {
+    this.dbChanges.cancel();
+    delete this.dbChanges;
+    await this.db.destroy();
+    delete this.db;
+  }
+
   public registerModel(model: Model<any>): void {
     this.models.push(model);
     if (this.db) {
-      // TODO: create indexes
+      this.ensureIndexes([model]);
     }
   }
 
-  private async ensureIndexes(): Promise<void> {
-    const dto: { name: string; fields: string[] }[] = [
+  private async ensureIndexes(models: Model<any>[]): Promise<void> {
+    const newIndexes: { name: string; fields: string[] }[] = [
       {
         name: '$type',
         fields: ['$type'],
       },
     ];
 
-    for (const model of this.models) {
+    for (const model of models) {
       for (const key of model.getIndexedKeys()) {
         const fields = ['$type', key];
         const name = fields.join('-');
-        if (!dto.some((o) => o.name === name)) {
-          dto.push({ name, fields });
+        if (!newIndexes.some((o) => o.name === name)) {
+          newIndexes.push({ name, fields });
         }
       }
     }
 
+    const currentIndexes = await this.getIndexes();
+
     await Promise.all(
-      dto.map((o) =>
-        this.db.createIndex({
-          index: {
-            name: o.name,
-            fields: o.fields,
-          },
-        })
-      )
+      newIndexes
+        .filter((o) => !currentIndexes.some((i) => i.name === o.name))
+        .map((o) =>
+          this.db.createIndex({
+            index: {
+              name: o.name,
+              fields: o.fields,
+            },
+          })
+        )
     );
   }
 
@@ -145,15 +158,13 @@ export class Connection {
       ? 'add'
       : 'update';
 
-    // TODO: convert to Document?
-
     this.stream.next({
       change,
       doc: value.doc,
     });
   }
 
-  public watch(): Subject<DocumentStream<any>> {
+  public watch(): Subject<GenericDocumentStream> {
     return this.stream;
   }
 }

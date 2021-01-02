@@ -1,0 +1,3 @@
+- Schemas
+  - type as Key
+  - Array with defaults

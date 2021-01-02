@@ -1,12 +1,9 @@
 import { Connection } from '../connection/connection.class';
 
-export class Remote {
+export class SyncHandler {
   private activeLiveSync: PouchDB.Replication.Sync<any>;
 
-  constructor(
-    private connection: Connection,
-    private remote: PouchDB.Database
-  ) {}
+  constructor(private connection: Connection, private db: PouchDB.Database) {}
 
   async start(
     mode: 'once' | 'live',
@@ -17,7 +14,7 @@ export class Remote {
         if (this.activeLiveSync) {
           throw new Error('Stop current live sync first');
         }
-        this.activeLiveSync = this.connection.db.sync(this.remote, {
+        this.activeLiveSync = this.connection.db.sync(this.db, {
           ...options,
           live: true,
           retry: true,
@@ -27,7 +24,7 @@ export class Remote {
       case 'once': {
         return new Promise((resolve, reject) => {
           const syncHandler = this.connection.db
-            .sync(this.remote, options)
+            .sync(this.db, options)
             .on('denied', (err) => {
               reject(err);
             })

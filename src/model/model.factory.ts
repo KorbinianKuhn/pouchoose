@@ -2,7 +2,7 @@ import { Document } from '../document/document.class';
 import { Schema } from '../schema/schema.class';
 import { Model } from './model.class';
 
-export const model = <T extends Document = any>(
+export const model = <T extends Document>(
   name: string,
   schema: Schema
 ): Model<T> => {

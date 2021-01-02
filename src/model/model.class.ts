@@ -29,7 +29,12 @@ export class Model<T extends Document> {
     this.connection
       .watch()
       .pipe(filter((event) => event.doc.$type === this.name))
-      .subscribe((event) => this.stream.next(event));
+      .subscribe((event) => {
+        this.stream.next({
+          change: event.change,
+          doc: new Document(event.doc, this) as T,
+        });
+      });
   }
 
   public watch(): Subject<DocumentStream<T>> {
@@ -84,6 +89,17 @@ export class Model<T extends Document> {
     ) as T;
   }
 
+  public new(doc: Partial<T>): T {
+    const [value] = this.preWrite([doc]);
+
+    return new Document(
+      {
+        ...value,
+      },
+      this
+    ) as T;
+  }
+
   public async insertMany(docs: Partial<T>[]): Promise<T[]> {
     const values = this.preWrite(docs);
     const encrypted = await this.encrypt(values);
@@ -108,6 +124,11 @@ export class Model<T extends Document> {
     });
 
     return res.docs.length;
+  }
+
+  public async exists(conditions: FilterQuery = {}): Promise<boolean> {
+    const res = await this.findOne(conditions).lean();
+    return res !== null;
   }
 
   public find(conditions: FilterQuery = {}): ArrayQuery<T> {

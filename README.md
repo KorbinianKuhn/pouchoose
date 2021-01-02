@@ -54,8 +54,14 @@ const Person = model<IPerson>('Person', personSchema);
 ## Queries
 
 ```typescript
-const doc = await Person.create({ name: 'Jane Doe' });
+// Create person instantly
+const jane = await Person.create({ name: 'Jane Doe' });
 
+// Create person and save later
+const john = Person.new({ name: 'John Doe' });
+await john.save();
+
+// Find persons
 const persons = await Person.find();
 ```
 
@@ -63,6 +69,7 @@ const persons = await Person.find();
 
 - count(conditions)
 - create(doc)
+- exists(conditions)
 - find(conditions)
 - findAndDelete(conditions)
 - findAndUpdate(conditions, update)
@@ -73,16 +80,19 @@ const persons = await Person.find();
 - findOneAndDelete(conditions)
 - findOneAndUpdate(conditions, update)
 - insertMany(docs)
+- new(doc)
 
 ### Populate
 
 ```typescript
 const userSchema = new Schema({
   name: String,
-  comments: {
-    type: String,
-    ref: 'Comment',
-  },
+  comments: [
+    {
+      type: String,
+      ref: 'Comment',
+    },
+  ],
 });
 const User = model('User', userSchema);
 
@@ -106,6 +116,44 @@ Not implemented
 
 ## Changes
 
+Subscribe to changes on connection-, model- or document-level.
+
+```typescript
+import { Subscription } from 'rxjs';
+
+const subscriptions = new Subscription();
+
+// Subscribe to all doc changes. Docs are lean json-objects.
+subscriptions.add(
+  connection.watch().subscribe((e: GenericDocumentStream) => {
+    console.log(e);
+    // { change: 'add' | 'update' | 'delete', doc: any }
+  })
+);
+
+// Subscribe to Person doc changes and filter only delete events. Docs are Document-Classes.
+subscriptions.add(
+  Person.watch()
+    .filter((e: DocumentStream) => e.change === 'delete')
+    .subscribe((e) => {
+      console.log(e);
+      // { change: 'add' | 'update' | 'delete', doc: IPerson }
+    })
+);
+
+// Subscribe to all changes of a specific document
+const jane = await Person.find({ name: 'Jane Doe' });
+subscriptions.add(
+  Person.watch().subscribe((e: DocumentStream) => {
+    console.log(e);
+    // { change: 'add' | 'update' | 'delete', doc: IPerson }
+  })
+);
+
+// Don't forget to unsubscribe
+subscriptions.unsubscribe();
+```
+
 ## Encryption
 
 Use callbacks to enable encryption with your custom logic and encryption library of choice (e.g. node-forge). These callbacks are executed on every CRUD-Operation, e.g. on a read-query before schema validation or on a write-query after schema validation.
@@ -128,7 +176,7 @@ connection.encrypt = async (docs: GenericDoc[]): Promise<GenericDoc[]> => {
     }
 
     // Encrypt content
-    encrypted.$encrypted = {
+    encrypted.$crypto = {
       alg: 'stringify',
       content: JSON.stringify(content),
     };
@@ -139,11 +187,11 @@ connection.encrypt = async (docs: GenericDoc[]): Promise<GenericDoc[]> => {
 
 connection.decrypt = async (docs: GenericDoc[]): Promise<GenericDoc[]> => {
   return docs.map((doc) => {
-    const { $encrypted, ...decrypted } = doc;
+    const { $crypto, ...decrypted } = doc;
 
     // Eventually decrypt content
-    if ($encrypted) {
-      Object.assign(decrypted, JSON.parse($encrypted.content));
+    if ($crypto) {
+      Object.assign(decrypted, JSON.parse($crypto.content));
     }
 
     return decrypted;
