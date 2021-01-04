@@ -72,4 +72,8 @@ export class AnySchema {
       value,
     };
   }
+
+  get(path?: string): AnySchema {
+    return this;
+  }
 }

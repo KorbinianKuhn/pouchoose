@@ -1,6 +1,7 @@
 import { Observable } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { Model } from '../model/model.interfaces';
+import { PouchooseError } from './../errors/pouchoose.error';
 import { DocumentStream, LeanDocument } from './document.interfaces';
 export class Document {
   public $type: string;
@@ -27,13 +28,20 @@ export class Document {
   public toObject<T extends Document = any>(): LeanDocument<T> {
     const obj: any = {};
 
-    const keys = Object.keys(this).filter(
-      (key) => !(this[key] instanceof Function)
-    );
-
-    for (const key of keys) {
-      obj[key] = this[key];
+    for (const [key, value] of Object.entries(this)) {
+      if (!(value instanceof Function)) {
+        if (value instanceof Document) {
+          obj[key] = value.toObject();
+        } else if (Array.isArray(value)) {
+          obj[key] = value.map((o) =>
+            o instanceof Document ? o.toObject() : o
+          );
+        } else {
+          obj[key] = value;
+        }
+      }
     }
+
     return obj;
   }
 
@@ -106,5 +114,23 @@ export class Document {
 
   public watch(): Observable<DocumentStream<this>> {
     return this.model.watch().pipe(filter((o) => o.doc._id === this._id));
+  }
+
+  async populate(path: string): Promise<this> {
+    // TODO
+    return this;
+  }
+
+  depopulate(path: string): this {
+    const doc = this.get(path);
+    if (doc instanceof Document) {
+      this.set(path, doc._id);
+    } else {
+      throw new PouchooseError(
+        `Path '${path}' is not populated`,
+        'PATH_NOT_POPULATED'
+      );
+    }
+    return this;
   }
 }

@@ -83,4 +83,8 @@ export class Schema {
   post(method: SchemaHookType, fn: (doc: Document) => Promise<void>): void {
     return;
   }
+
+  get(path?: any) {
+    return this.schema.get(path);
+  }
 }

@@ -72,4 +72,10 @@ export class ObjectSchema extends AnySchema {
       value: result,
     };
   }
+
+  get(path?: string): AnySchema {
+    const parts = path.split('.');
+    const key = parts.shift();
+    return this.keys[key].get(parts.join('.'));
+  }
 }

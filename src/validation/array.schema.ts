@@ -76,4 +76,8 @@ export class ArraySchema extends AnySchema {
       value: result,
     };
   }
+
+  get(path?: any): AnySchema {
+    return this.items[0].get(path);
+  }
 }
