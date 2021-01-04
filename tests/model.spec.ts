@@ -1,22 +1,14 @@
 import { expect } from 'chai';
-import * as PouchDB from 'pouchdb';
-import * as PouchDBMemory from 'pouchdb-adapter-memory';
-import {
-  connect,
-  Connection,
-  Document,
-  model,
-  Schema,
-} from '../src/public_api';
-
-PouchDB.plugin(PouchDBMemory);
+import { Model } from '../src/model/model.interfaces';
+import { Connection, Document, Schema } from '../src/public_api';
+import { beforeEachOperations } from './utils';
 
 interface IPerson extends Document {
   name: string;
   age: number;
 }
 
-const personSchema = new Schema({
+const PersonSchema = new Schema({
   name: String,
   age: {
     type: Number,
@@ -25,23 +17,18 @@ const personSchema = new Schema({
 });
 
 let connection: Connection;
-const Person = model<IPerson>('Person', personSchema);
-before(async () => {
-  connection = await connect('test', {
-    adapter: 'memory',
-  });
-});
+let Person: Model<IPerson>;
 
 beforeEach(async () => {
-  await connection.destroyDatabase();
-  await connection.reconnect();
+  connection = await beforeEachOperations();
+  Person = connection.model<IPerson>('Person', PersonSchema);
 });
 
 describe('Model', async () => {
   it('create()', async () => {
     const person = await Person.create({ name: 'Jane Doe' });
 
-    expect(person.toJSON()).to.deep.equal({
+    expect(person.toObject()).to.deep.equal({
       $type: 'Person',
       name: 'Jane Doe',
       age: 42,
@@ -54,12 +41,12 @@ describe('Model', async () => {
   });
 
   it('new()', async () => {
-    const jane = Person.new({ name: 'Jane Doe' });
+    const jane = new Person({ name: 'Jane Doe' });
     await jane.save();
 
     const res = await Person.findOne({ name: 'Jane Doe' });
 
-    expect(res.toJSON()).to.deep.equal(jane.toJSON());
+    expect(res.toObject()).to.deep.equal(jane.toObject());
   });
 
   it('insertMany()', async () => {
@@ -92,7 +79,7 @@ describe('Model', async () => {
 
     const res = await Person.find();
 
-    expect(person.toJSON()).to.deep.equal(res[0].toJSON());
+    expect(person.toObject()).to.deep.equal(res[0].toObject());
 
     await Person.create({ name: 'John Doe' });
 
@@ -105,17 +92,17 @@ describe('Model', async () => {
 
     const res = await Person.findOne();
 
-    expect(person.toJSON()).to.deep.equal(res.toJSON());
+    expect(person.toObject()).to.deep.equal(res.toObject());
   });
 
   it('findById()', async () => {
     const person = await Person.create({ name: 'Jane Doe' });
 
-    person.toJSON();
+    person.toObject();
 
     const res = await Person.findById(person._id);
 
-    expect(person.toJSON()).to.deep.equal(res.toJSON());
+    expect(person.toObject()).to.deep.equal(res.toObject());
   });
 
   it('findAndUpdate()', async () => {

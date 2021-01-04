@@ -1,18 +1,13 @@
-import { Connection } from '../connection/connection.class';
 import { Document } from '../document/document.class';
-import { Schema } from '../schema/schema.class';
-import { QueryConditions } from './query.interfaces';
+import { Model } from '../model/model.interfaces';
+import { QueryConditions, QueryPipelineItem } from './query.interfaces';
 
 export abstract class Query<T extends Document> {
-  public pipeline: any[] = [];
+  public pipeline: QueryPipelineItem[] = [];
 
-  private _lean: boolean = false;
+  private _lean = false;
 
-  constructor(
-    public query: QueryConditions,
-    public connection: Connection,
-    public schema: Schema
-  ) {}
+  constructor(public query: QueryConditions, public model: Model<T>) {}
 
   skip(value: number): this {
     this.query.request.skip = value;
@@ -24,25 +19,27 @@ export abstract class Query<T extends Document> {
     return this;
   }
 
-  populate(): this {
+  populate(path: string): this {
+    this.pipeline.push({
+      type: 'populate',
+      path,
+    });
     return this;
   }
 
   protected async _exec(): Promise<T[]> {
-    const res = await this.connection.db.find(this.query.request);
+    const res = await this.model.connection.db.find(this.query.request);
 
-    const decrypted = this.connection.decrypt
-      ? await this.connection.decrypt(res.docs)
+    const decrypted = this.model.connection.decrypt
+      ? await this.model.connection.decrypt(res.docs)
       : res.docs;
 
-    // for (const step of this.pipeline) {
-    //   // TODO: execute pipeline steps
-    // }
-
-    const validated = decrypted.map((o) => this.schema.validate(o));
+    for (const step of this.pipeline) {
+      // TODO: populate
+    }
 
     return this._lean
-      ? validated
-      : validated.map((doc) => new Document(doc, null) as T);
+      ? (decrypted as any)
+      : decrypted.map((doc) => new Document(doc, this.model) as T);
   }
 }

@@ -1,4 +1,5 @@
 import { Document } from '../document/document.class';
+import { PouchooseError } from '../errors/pouchoose.error';
 import {
   DecOperator,
   IncOperator,
@@ -50,7 +51,10 @@ export const applyUpdateQueryToDocs = <T extends Document>(
         break;
       }
       default:
-        throw new Error(`Unknown operator: ${operator}`);
+        throw new PouchooseError(
+          `Unknown update operator: ${operator}`,
+          'UNKNOWN_UPDATE_OPERATOR'
+        );
     }
   }
 };

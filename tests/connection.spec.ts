@@ -1,45 +1,29 @@
 import { expect } from 'chai';
-import * as PouchDB from 'pouchdb';
-import * as PouchDBMemory from 'pouchdb-adapter-memory';
 import { GenericDoc } from '../src/document/document.interfaces';
-import {
-  connect,
-  Connection,
-  Document,
-  model,
-  Schema,
-} from '../src/public_api';
-
-PouchDB.plugin(PouchDBMemory);
+import { Connection, Document, Schema } from '../src/public_api';
+import { beforeEachOperations } from './utils';
 
 let connection: Connection;
 beforeEach(async () => {
-  connection = await connect('test', {
-    adapter: 'memory',
-  });
-});
-
-afterEach(async () => {
-  delete connection.encrypt;
-  delete connection.decrypt;
-  await connection.destroyDatabase();
+  connection = await beforeEachOperations();
 });
 
 describe('Connection', async () => {
   it('should have only default indexes', async () => {
+    await new Promise<void>((resolve) => setTimeout(() => resolve(), 1000));
     const indexes = await connection.getIndexes();
     expect(indexes.map((o) => o.name)).to.deep.equal(['$type']);
   });
 
   it('should create schema defined indexes', async () => {
-    const personSchema = new Schema({
+    const PersonSchema = new Schema({
       name: {
         type: String,
         index: true,
       },
     });
 
-    model('Person', personSchema);
+    connection.model('Person', PersonSchema);
 
     await new Promise<void>((resolve) => setTimeout(() => resolve(), 1000));
 
@@ -72,7 +56,7 @@ describe('Connection', async () => {
       });
     };
 
-    const personSchema = new Schema({
+    const PersonSchema = new Schema({
       name: String,
     });
 
@@ -80,7 +64,7 @@ describe('Connection', async () => {
       name: string;
     }
 
-    const Person = model<Person>('Person', personSchema);
+    const Person = connection.model<Person>('Person', PersonSchema);
 
     const jane = await Person.create({ name: 'Jane Doe' });
 
@@ -90,6 +74,6 @@ describe('Connection', async () => {
 
     expect(decryptCalled).to.equal(1);
 
-    expect(jane.toJSON()).to.deep.equal(jane2.toJSON());
+    expect(jane.toObject()).to.deep.equal(jane2.toObject());
   });
 });

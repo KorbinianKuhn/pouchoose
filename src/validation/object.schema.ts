@@ -1,6 +1,6 @@
+import { ValidationError } from '../errors/validation.error';
 import { isPlainObject } from '../utils/is-plain-object';
 import { AnySchema } from './any.schema';
-import { ValidationError } from './validation.error';
 import { ValidationResult } from './validation.interfaces';
 
 export class ObjectSchema extends AnySchema {

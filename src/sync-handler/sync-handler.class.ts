@@ -1,4 +1,5 @@
 import { Connection } from '../connection/connection.class';
+import { PouchooseError } from '../errors/pouchoose.error';
 
 export class SyncHandler {
   private activeLiveSync: PouchDB.Replication.Sync<any>;
@@ -12,7 +13,10 @@ export class SyncHandler {
     switch (mode) {
       case 'live': {
         if (this.activeLiveSync) {
-          throw new Error('Stop current live sync first');
+          throw new PouchooseError(
+            'Stop current live sync first',
+            'LIVE_SYNC_RUNNING'
+          );
         }
         this.activeLiveSync = this.connection.db.sync(this.db, {
           ...options,

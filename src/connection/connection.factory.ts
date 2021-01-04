@@ -1,14 +1,10 @@
 import { Connection } from './connection.class';
-import { DEFAULT_CONNECTION } from './connection.constants';
 
-export const connect = async (
+export const createConnection = async (
   name: string,
   options?: PouchDB.Configuration.DatabaseConfiguration
-): Promise<Connection> => {
-  const connection =
-    DEFAULT_CONNECTION.name === undefined || DEFAULT_CONNECTION.name === name
-      ? DEFAULT_CONNECTION
-      : new Connection();
+) => {
+  const connection = new Connection();
 
   connection.configure(name, options);
 

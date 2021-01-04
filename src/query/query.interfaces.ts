@@ -45,3 +45,8 @@ export interface IncOperator {
 export interface DecOperator {
   [key: string]: number;
 }
+
+export interface QueryPipelineItem {
+  type: 'populate';
+  path: string;
+}

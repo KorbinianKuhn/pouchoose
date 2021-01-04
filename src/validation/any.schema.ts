@@ -1,4 +1,4 @@
-import { ValidationError } from './validation.error';
+import { ValidationError } from '../errors/validation.error';
 import { ValidationResult } from './validation.interfaces';
 
 export class AnySchema {

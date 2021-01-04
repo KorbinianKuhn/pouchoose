@@ -39,7 +39,7 @@ interface IPerson {
 }
 
 // Define a Schema
-const personSchema = new Schema({
+const PersonSchema = new Schema({
   name: String,
   age: {
     type: Number,
@@ -48,7 +48,7 @@ const personSchema = new Schema({
 });
 
 // Create a Model (TS-Interface is optional)
-const Person = model<IPerson>('Person', personSchema);
+const Person = model<IPerson>('Person', PersonSchema);
 ```
 
 ## Queries

@@ -1,5 +1,5 @@
+import { ValidationError } from '../errors/validation.error';
 import { AnySchema } from './any.schema';
-import { ValidationError } from './validation.error';
 import { ValidationResult } from './validation.interfaces';
 
 export class DateSchema extends AnySchema {

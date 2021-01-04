@@ -20,3 +20,11 @@ export interface SchemaTypeObject {
   default?: any;
   validate?: (value: any) => void | any;
 }
+
+export interface SchemaMethods {
+  [key: string]: any;
+}
+
+export interface SchemaStatics {
+  [key: string]: any;
+}

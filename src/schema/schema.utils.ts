@@ -1,3 +1,4 @@
+import { PouchooseError } from '../errors/pouchoose.error';
 import { AnySchema } from '../validation/any.schema';
 import { ArraySchema } from '../validation/array.schema';
 import { BooleanSchema } from '../validation/boolean.schema';
@@ -95,7 +96,10 @@ const transformDefinitionToValidationSchema = (
       case 'Date':
         return getDateSchema({ type: Date });
       default:
-        throw new Error(`Unsupported Schema type: ${name}`);
+        throw new PouchooseError(
+          `Unknown schema type: ${name}`,
+          'UNKNOWN_SCHEMA_TYPE'
+        );
     }
   }
 
@@ -114,7 +118,10 @@ const transformDefinitionToValidationSchema = (
       case 'Date':
         return getDateSchema(definition as SchemaTypeObject);
       default:
-        throw new Error(`Unsupported Schema type: ${definition.type.name}`);
+        throw new PouchooseError(
+          `Unknown schema type: ${definition.type.name}`,
+          'UNKNOWN_SCHEMA_TYPE'
+        );
     }
   }
 

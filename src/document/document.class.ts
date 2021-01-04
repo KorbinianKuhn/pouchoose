@@ -1,7 +1,7 @@
 import { Observable } from 'rxjs';
 import { filter } from 'rxjs/operators';
-import { Model } from '../model/model.class';
-import { DocumentStream } from './document.interfaces';
+import { Model } from '../model/model.interfaces';
+import { DocumentStream, LeanDocument } from './document.interfaces';
 export class Document {
   public $type: string;
   public _id: string;
@@ -10,12 +10,26 @@ export class Document {
 
   constructor(doc: any, private model: Model<any>) {
     Object.assign(this, doc);
+
+    if (model) {
+      for (const virtual of model.schema.virtuals) {
+        Object.defineProperty(this, virtual.name, {
+          get: virtual._getter,
+        });
+      }
+
+      for (const [name, fn] of Object.entries(model.schema.methods)) {
+        this[name] = fn;
+      }
+    }
   }
 
-  public toJSON(): any {
+  public toObject<T extends Document = any>(): LeanDocument<T> {
     const obj: any = {};
 
-    const keys = Object.keys(this).filter((key) => !['model'].includes(key));
+    const keys = Object.keys(this).filter(
+      (key) => !(this[key] instanceof Function)
+    );
 
     for (const key of keys) {
       obj[key] = this[key];
@@ -69,19 +83,21 @@ export class Document {
 
   public async save(): Promise<this> {
     const doc = this._id
-      ? await this.model.findByIdAndUpdate(this._id, this.toJSON())
-      : await this.model.create(this.toJSON());
+      ? await (this.model as Model<this>).findByIdAndUpdate(this._id, {
+          $set: this.toObject(),
+        })
+      : await (this.model as Model<this>).create(this.toObject());
 
-    Object.assign(this, doc.toJSON());
+    Object.assign(this, doc.toObject());
 
     return this;
   }
 
   public async delete(): Promise<this> {
     if (this._id) {
-      const doc = await this.model.findByIdAndDelete(this._id);
+      const doc = await (this.model as Model<this>).findByIdAndDelete(this._id);
 
-      Object.assign(this, doc.toJSON());
+      Object.assign(this, doc.toObject());
     } else {
       this._deleted = true;
     }

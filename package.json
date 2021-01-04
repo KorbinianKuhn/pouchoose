@@ -10,7 +10,8 @@
     "coverage": "nyc -r lcov -e .ts -x \"*.spec.ts\" npm run test",
     "lint": "eslint --fix src tests",
     "format": "prettier --write src tests",
-    "prepublish": "tsc"
+    "prepublish": "tsc",
+    "doc": "typedoc --theme minimal index.ts"
   },
   "author": "Korbinian Kuhn",
   "license": "MIT",
@@ -34,6 +35,7 @@
     "pouchdb-adapter-memory": "^7.2.2",
     "prettier": "^2.2.1",
     "ts-node-dev": "^1.0.0",
+    "typedoc": "^0.20.10",
     "typescript": "^4.0.5"
   },
   "dependencies": {
